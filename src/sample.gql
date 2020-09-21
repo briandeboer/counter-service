@@ -1,0 +1,14 @@
+mutation LogEvent {
+  logEvent(
+    newEvent {
+      eventType: CLICK
+      ipAddress: "1.2.3.4"
+      timestamp: 1600541388
+      userAgent: "Some Very Long User Agent"
+      campaignId: "someValue"
+    }
+  ) {
+    id
+  }
+}
+
