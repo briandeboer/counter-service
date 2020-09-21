@@ -1,16 +1,16 @@
 use actix_web::web::Data;
 use bson::doc;
-use cached::TimedCache;
 use juniper::{FieldError, RootNode};
 use jwt_validator::{Claims, TestClaims};
 use log::debug;
-use mongodb_base_service::{BaseService, ServiceError, ID};
+use mongodb_base_service::{BaseService, DeleteResponseGQL, ServiceError, ID};
 use mongodb_cursor_pagination::FindResult;
 use std::env;
 use std::sync::Arc;
 use std::time::SystemTime;
 
 use crate::api;
+use crate::api::lowercase_id;
 use crate::db::Clients;
 use crate::models::*;
 
@@ -74,6 +74,23 @@ impl Query {
         }
     }
 
+    fn config_by_application_id(ctx: &Context, application_id: ID) -> Result<Config, FieldError> {
+        let service = ctx
+            .clients
+            .get_ref()
+            .mongo
+            .get_mongo_service("configs")
+            .unwrap();
+        let result: Result<Option<Config>, ServiceError> = service.find_one_by_id(application_id);
+        match result {
+            Ok(item) => match item {
+                Some(item) => Ok(item),
+                None => Err("Unable to find item".into()),
+            },
+            Err(e) => Err(FieldError::from(e)),
+        }
+    }
+
     fn all_events(
         ctx: &Context,
         application_id: ID,
@@ -109,7 +126,62 @@ fn has_auth(ctx: &Context) -> bool {
 
 #[juniper::object(Context = Context)]
 impl Mutation {
-    // samples
+    // configs
+    fn create_config(
+        ctx: &Context,
+        mut new_config: NewConfig,
+        created_by_id: Option<ID>,
+    ) -> Result<Config, FieldError> {
+        if !has_auth(ctx) && *DISABLE_AUTH != 1 {
+            return Err("Unauthorized".into());
+        }
+        let service = ctx.clients.mongo.get_mongo_service("configs").unwrap();
+        new_config.application_id = lowercase_id(&new_config.application_id);
+        new_config.groups = new_config
+            .groups
+            .iter()
+            .map(|g| g.to_ascii_lowercase())
+            .collect();
+        let inserted_id: ID = service.insert_one(new_config, created_by_id)?;
+        let maybe_item = service.find_one_by_id(inserted_id)?;
+        match maybe_item {
+            Some(item) => Ok(item),
+            None => Err("Unable to retrieve object after insert".into()),
+        }
+    }
+
+    fn update_config(
+        ctx: &Context,
+        application_id: ID,
+        mut update_config: UpdateConfig,
+        updated_by_id: Option<ID>,
+    ) -> Result<Config, FieldError> {
+        if !has_auth(ctx) && *DISABLE_AUTH != 1 {
+            return Err("Unauthorized".into());
+        }
+        // check authorization first
+        let service = ctx.clients.mongo.get_mongo_service("configs").unwrap();
+        // lowercase all the groups
+        if let Some(groups) = update_config.groups {
+            update_config.groups = Some(groups.iter().map(|g| g.to_ascii_lowercase()).collect());
+        }
+        service
+            .update_one(lowercase_id(&application_id), update_config, updated_by_id)
+            .map_err(|e| e.into())
+    }
+
+    fn delete_config(ctx: &Context, application_id: ID) -> Result<DeleteResponseGQL, FieldError> {
+        if !has_auth(ctx) && *DISABLE_AUTH != 1 {
+            return Err("Unauthorized".into());
+        }
+        let service = ctx.clients.mongo.get_mongo_service("configs").unwrap();
+        match service.delete_one_by_id(lowercase_id(&application_id)) {
+            Ok(result) => Ok(result.into()),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    // events
     fn log_event(
         ctx: &Context,
         application_id: ID,

@@ -1,4 +1,4 @@
-use mongodb::{Client, Collection};
+use mongodb::Client;
 use mongodb_base_service::DataSources;
 use std::env;
 

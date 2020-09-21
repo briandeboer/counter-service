@@ -13,8 +13,8 @@ type Config {
   applicationId: ID
   buckets: [HOUR, DAY] // possible values are HOUR, DAY, WEEK, MONTH, ALL_TIME
   groups: [
-    ["eventType", "campaignId"],
-    ["eventType", "campaignId", "ipAddress"],
+    "eventType|campaignId",
+    "eventType|campaignId|ipAddress",
   ]
 }
 ```
@@ -39,10 +39,10 @@ mutation LogEventA {
     newEvent {
       applicationId: "appId"
       keys: [
-        { eventType: "click" },
-        { ipAddress: "1.2.3.4" },
-        { userAgent: "Some Very Long User Agent" },
-        { campaignId: "someValue" }
+        { key: "eventType", value: "click" },
+        { key: "ipAddress", value: "1.2.3.4" },
+        { key: "userAgent", value: "Some Very Long User Agent" },
+        { key: "campaignId", value: "someValue" }
       ],
       timestamp: 100000000 # 9:48
     }
@@ -60,10 +60,10 @@ mutation LogEventB {
     newEvent {
       applicationId: "appId"
       keys: [
-        { eventType: "click" },
-        { ipAddress: "1.2.3.4" },
-        { userAgent: "Some Very Long User Agent" },
-        { campaignId: "someValue" }
+        { key: "eventType", value: "click" },
+        { key: "ipAddress", value: "1.2.3.4" },
+        { key: "userAgent", value: "Some Very Long User Agent" },
+        { key: "campaignId", value: "someValue" }
       ],
       timestamp: 100001111 # 10:05
     }
@@ -81,9 +81,10 @@ mutation LogEventC {
     newEvent {
       applicationId: "appId",
       keys: [
-        { eventType: "click" },
-        { ipAddress: "2.3.4.5" },
-        { campaignId: "someValue" }
+        { key: "eventType", value: "click" },
+        { key: "ipAddress", value: "2.3.4.5" },
+        { key: "userAgent", value: "Some Very Long User Agent" },
+        { key: "campaignId", value: "someValue" }
       ],
       timestamp: 100002222 # 10:23
     }
@@ -104,7 +105,7 @@ Collection name in mongo will be `events_bucket_hour`
 // two records because two different hours
 // LogEventA
 {
-  hash: "appid|click|somevalue|99997200", // last number is timestamp of 9:00am UTC
+  hash: "click|somevalue|99997200", // last number is timestamp of 9:00am UTC
   applicationId, "appId",
   timestamp: 99997200,
   window: "Hour",
@@ -118,7 +119,7 @@ Collection name in mongo will be `events_bucket_hour`
 
 // LogEventB & LogEventC
 {
-  hash: "appid|click|somevalue|100000800", // last number is timestamp of 10:00am UTC
+  hash: "click|somevalue|100000800", // last number is timestamp of 10:00am UTC
   applicationId, "appId",
   timestamp: 100000800,
   window: "Hour",
@@ -166,7 +167,7 @@ Collection name in mongo will be `events_bucket_hour`
 // three records because two different hours and two different ips
 // LogEventA
 {
-  hash: "appid|click|somevalue|1.2.3.4|99997200", // last number is timestamp of 9:00am UTC
+  hash: "Hour|click|somevalue|1.2.3.4|99997200", // last number is timestamp of 9:00am UTC
   applicationId, "appId",
   timestamp: 99997200,
   window: "Hour",
@@ -180,7 +181,7 @@ Collection name in mongo will be `events_bucket_hour`
 
 // LogEventB
 {
-  hash: "appid|click|somevalue|1.2.3.4|100000800", // last number is timestamp of 10:00am UTC
+  hash: "Hour|click|somevalue|1.2.3.4|100000800", // last number is timestamp of 10:00am UTC
   applicationId, "appId",
   timestamp: 100000800,
   window: "Hour",
@@ -194,7 +195,7 @@ Collection name in mongo will be `events_bucket_hour`
 
 // LogEventC
 {
-  hash: "appid|click|somevalue|2.3.4.5|100002222", // last number is timestamp of 10:00am UTC
+  hash: "Hour|click|somevalue|2.3.4.5|100002222", // last number is timestamp of 10:00am UTC
   applicationId, "appId",
   timestamp: 100002222,
   window: "Hour",
@@ -218,7 +219,7 @@ Collection name in mongo will be `events_bucket_day`
 ```json
 // Two records because LogEventA & LogEventB get grouped together
 {
-  hash: "appid|click|somevalue|1.2.3.4|99964800", // timestamp of 00:00 UTC
+  hash: "Day|click|somevalue|1.2.3.4|99964800", // timestamp of 00:00 UTC
   applicationId, "appId",
   timestamp: 99964800,
   window: "Day",
@@ -232,7 +233,7 @@ Collection name in mongo will be `events_bucket_day`
 },
 // LogEventC
 {
-  hash: "appid|click|somevalue|2.3.4.5|99964800", // timestamp of 00:00 UTC
+  hash: "Day|click|somevalue|2.3.4.5|99964800", // timestamp of 00:00 UTC
   applicationId, "appId",
   timestamp: 99964800,
   window: "Day",

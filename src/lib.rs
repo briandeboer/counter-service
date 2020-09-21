@@ -1,5 +1,5 @@
-#[macro_use]
-extern crate cached;
+// #[macro_use]
+// extern crate cached;
 #[macro_use]
 extern crate lazy_static;
 

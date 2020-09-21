@@ -1,0 +1,84 @@
+query AllEvents {
+  allEvents(applicationId:"appId") {
+    items {
+      id
+      timestamp
+      dateCreated
+      keys {
+        key
+        value
+      }
+    }
+  }
+}
+
+mutation LogEvent {
+  logEvent(
+    applicationId: "appId"
+    newEvent: {
+      keys: [
+        { key: "eventType", value: "click" },
+        { key: "ipAddress", value: "1.2.3.4" },
+        { key: "userAgent", value: "Some Very Long User Agent" },
+        { key: "campaignId", value: "someValue" }
+      ],
+      timestamp: 100000000
+    }) {
+    id
+    timestamp
+  }
+}
+
+query AllConfigs {
+  allConfigs {
+    items {
+      applicationId
+      groups
+      windows
+    }
+  }
+}
+
+query ConfigById {
+  configByApplicationId(applicationId:"appId") {
+    applicationId
+    windows
+    groups
+  }
+}
+
+mutation CreateConfig {
+  createConfig(newConfig: {
+    applicationId: "appId"
+    windows: [DAY, HOUR]
+    groups:[
+      "eventType|campaignId",
+    	"eventType|campaignId|ipAddress",
+    ]
+  }) {
+    applicationId
+  }
+}
+
+mutation UpdateConfig {
+  updateConfig(
+    applicationId: "appId",
+    updateConfig: {
+      windows: [HOUR, DAY]
+      groups: [
+        "eventType|campaignId",
+    	  "eventType|campaignId|ipAddress",
+      ]  
+  }) {
+    applicationId
+    windows
+    groups
+  }
+}
+
+mutation RemoveConfig {
+  deleteConfig(applicationId: "appId") {
+    success
+  }
+}
+

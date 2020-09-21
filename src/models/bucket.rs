@@ -31,7 +31,7 @@ pub struct Bucket {
     pub application_id: ID,
     pub grouping: String,
     pub nested_groupings: Vec<String>,
-    pub windows: Vec<WindowType>,
+    pub window: WindowType,
     pub timestamp: i32,
     pub event_ids: Vec<ID>,
 }
@@ -54,8 +54,8 @@ impl Bucket {
         &self.nested_groupings
     }
 
-    fn windows(&self) -> &Vec<WindowType> {
-        &self.windows
+    fn window(&self) -> &WindowType {
+        &self.window
     }
 
     fn timestamp(&self) -> i32 {

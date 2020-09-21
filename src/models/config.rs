@@ -104,3 +104,14 @@ pub struct NewConfig {
     pub windows: Vec<WindowType>,
     pub groups: Vec<String>,
 }
+
+#[derive(Serialize, Deserialize, juniper::GraphQLInputObject)]
+pub struct UpdateConfig {
+    /// Optional updated windows
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub windows: Option<Vec<WindowType>>,
+
+    /// Optional updated groups
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<String>>,
+}

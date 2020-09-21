@@ -97,7 +97,7 @@ impl From<FindResult<Event>> for EventConnection {
     }
 }
 
-#[derive(Serialize, Deserialize, juniper::GraphQLInputObject)]
+#[derive(Clone, Serialize, Deserialize, juniper::GraphQLInputObject)]
 pub struct NewEvent {
     #[serde(rename = "_id")]
     id: Option<ID>,
@@ -105,14 +105,54 @@ pub struct NewEvent {
     pub timestamp: i32,
 }
 
+pub trait KeyPairing {
+    fn key(&self) -> String;
+    fn value(&self) -> String;
+    fn lowercase(&self) -> Self;
+}
+
 #[derive(Clone, Serialize, Deserialize, GraphQLObject)]
 pub struct KeyPair {
-    key: String,
-    value: String,
+    pub key: String,
+    pub value: String,
+}
+
+impl KeyPairing for KeyPair {
+    fn key(&self) -> String {
+        self.key.to_ascii_lowercase()
+    }
+
+    fn value(&self) -> String {
+        self.value.to_ascii_lowercase()
+    }
+
+    fn lowercase(&self) -> Self {
+        Self {
+            key: self.key(),
+            value: self.value(),
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, GraphQLInputObject)]
 pub struct NewKeyPair {
-    key: String,
-    value: String,
+    pub key: String,
+    pub value: String,
+}
+
+impl KeyPairing for NewKeyPair {
+    fn key(&self) -> String {
+        self.key.to_ascii_lowercase()
+    }
+
+    fn value(&self) -> String {
+        self.value.to_ascii_lowercase()
+    }
+
+    fn lowercase(&self) -> Self {
+        Self {
+            key: self.key(),
+            value: self.value(),
+        }
+    }
 }
