@@ -126,6 +126,53 @@ impl Query {
             &keys,
         )
     }
+
+    fn count_events_by_group(
+        ctx: &Context,
+        application_id: ID,
+        window: WindowType,
+        start_timestamp: i32,
+        end_timestamp: i32,
+        grouping: String,
+        nested_grouping: String,
+    ) -> Result<api::events::CountResponse, FieldError> {
+        api::events::count_events_by_group(
+            ctx.clients.get_ref(),
+            &application_id,
+            &window,
+            start_timestamp,
+            end_timestamp,
+            &grouping,
+            &nested_grouping,
+        )
+    }
+
+    fn event_groups(
+        ctx: &Context,
+        application_id: ID,
+        window: WindowType,
+        start_timestamp: i32,
+        end_timestamp: i32,
+        grouping: Option<String>,
+        nested_grouping: Option<String>,
+    ) -> Result<BucketConnection, FieldError> {
+        let result = api::events::query_event_groups(
+            ctx.clients.get_ref(),
+            &application_id,
+            &window,
+            start_timestamp,
+            end_timestamp,
+            &grouping,
+            &nested_grouping,
+        );
+        match result {
+            Ok(all_items) => {
+                let connection: BucketConnection = all_items.into();
+                Ok(connection)
+            }
+            Err(e) => Err(FieldError::from(e)),
+        }
+    }
 }
 
 pub struct Mutation;

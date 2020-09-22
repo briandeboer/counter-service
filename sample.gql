@@ -16,15 +16,49 @@ query EventGroupByKeys {
   eventGroupByKeys(
     applicationId:"appId"
     window:DAY
-    timestamp:99964800
-    group:"eventType|campaignId"
+    timestamp:99997200
+    grouping:"eventType|campaignId|ipAddress"
     keys: [
       { key:"eventType", value:"click"},
       { key:"campaignId", value:"someValue"},
+      { key:"ipaddress", value:"2.3.4.5"}
     ]
   ) {
     hash
     applicationId
+    count
+    window
+    grouping
+    nestedGroupings
+  }
+}
+
+query CountEventsByGroup {
+  countEventsByGroup(
+    applicationId:"appId"
+    window:DAY
+    startTimestamp:99997200
+    endTimestamp:100051200
+    grouping:"eventType|campaignId|ipAddress"
+    nestedGrouping: "eventType|campaignId"
+  ) {
+    aggregateCount
+    recordCount
+  }
+}
+
+query EventGroups {
+  eventGroups(
+    applicationId:"appId"
+    window:DAY
+    startTimestamp:99997200
+    endTimestamp:100051200
+  ) {
+    totalCount
+    items {
+      hash
+      count
+    }
   }
 }
 
@@ -65,7 +99,7 @@ query ConfigById {
 
 mutation CreateConfig {
   createConfig(newConfig: {
-    applicationId: "app2"
+    applicationId: "appId"
     windows: [DAY, HOUR]
     groups:[
       "eventType",
@@ -78,7 +112,7 @@ mutation CreateConfig {
 
 mutation UpdateConfig {
   updateConfig(
-    applicationId: "app2",
+    applicationId: "appId",
     updateConfig: {
       windows: [HOUR, ALL_TIME]
       groups: [

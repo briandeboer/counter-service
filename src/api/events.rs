@@ -1,16 +1,16 @@
-use bson::doc;
+use bson::{doc, Bson};
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike, Weekday};
 use juniper::FieldError;
 use mongodb::options::UpdateOptions;
-use std::collections::HashMap;
-
 use mongodb_base_service::{BaseService, ServiceError, ID};
 use mongodb_cursor_pagination::FindResult;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 use crate::api::lowercase_id;
 use crate::db::{mongo::add_collection_by_name, Clients};
 use crate::models::*;
-use std::sync::RwLock;
 
 lazy_static! {
     static ref CONFIGS: RwLock<HashMap<ID, Config>> = RwLock::new(HashMap::new());
@@ -151,6 +151,100 @@ pub fn bucket_by_keys(
         Some(bucket) => Ok(bucket),
         None => Err("Unable to find event group".into()),
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, juniper::GraphQLObject)]
+pub struct CountResponse {
+    aggregate_count: i32,
+    record_count: i32,
+}
+
+pub fn count_events_by_group(
+    ctx: &Clients,
+    application_id: &ID,
+    window: &WindowType,
+    start_timestamp: i32,
+    end_timestamp: i32,
+    grouping: &str,
+    nested_grouping: &str,
+) -> Result<CountResponse, FieldError> {
+    if !is_valid_application(application_id) {
+        return Err("Invalid application ID".into());
+    }
+
+    let collection_name = get_collection_name(application_id, Some(window));
+    let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
+    let start_timestamp = get_timestamp_start(window, start_timestamp);
+    let end_timestamp = get_timestamp_start(window, end_timestamp);
+
+    let grouping = grouping.to_ascii_lowercase();
+    let nested_grouping = vec![nested_grouping.to_ascii_lowercase()];
+    let match_doc = doc! {
+        "$match": {
+            "grouping": grouping,
+            "nested_groupings": { "$in": nested_grouping },
+            "timestamp": { "$gte": start_timestamp, "$lte": end_timestamp },
+        },
+    };
+    let group_doc = doc! {
+        "$group": {
+            "_id": Bson::Null,
+            "record_count": { "$sum": 1 },
+            "aggregate_count": { "$sum": "$count" },
+        }
+    };
+    let mut result = service
+        .data_source()
+        .aggregate(vec![match_doc.clone(), group_doc.clone()], None)?;
+
+    if let Some(first) = result.next() {
+        if let Ok(doc) = first {
+            let count_response: CountResponse =
+                bson::from_bson(bson::Bson::Document(doc.clone())).unwrap();
+            return Ok(count_response);
+        }
+    }
+
+    Err("Unable to process aggregation".into())
+}
+
+pub fn query_event_groups(
+    ctx: &Clients,
+    application_id: &ID,
+    window: &WindowType,
+    start_timestamp: i32,
+    end_timestamp: i32,
+    grouping: &Option<String>,
+    nested_grouping: &Option<String>,
+) -> Result<FindResult<Bucket>, FieldError> {
+    if !is_valid_application(application_id) {
+        return Err("Invalid application ID".into());
+    }
+
+    let collection_name = get_collection_name(application_id, Some(window));
+
+    let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
+    let start_timestamp = get_timestamp_start(window, start_timestamp);
+    let end_timestamp = get_timestamp_start(window, end_timestamp);
+
+    let mut filter = doc! {
+        "timestamp": { "$gte": start_timestamp, "$lte": end_timestamp },
+    };
+
+    if let Some(grouping) = grouping {
+        filter.insert("grouping", grouping.to_ascii_lowercase());
+    }
+
+    if let Some(nested_grouping) = nested_grouping {
+        filter.insert(
+            "nested_groupings",
+            vec![nested_grouping.to_ascii_lowercase()],
+        );
+    }
+
+    let result: Result<FindResult<Bucket>, _> =
+        service.find(Some(filter), None, None, None, None, None);
+    result.map_err(|e| e.into())
 }
 
 /// TODO: This should just return the event back, the storing of the event happens separately

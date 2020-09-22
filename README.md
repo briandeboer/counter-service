@@ -98,7 +98,7 @@ An event will be logged into the all_events bucket, and based on the above examp
 
 ### Bucket 1
 
-Grouped by eventType, campaignId, and hour. 
+Grouped by eventType, campaignId, and hour.
 Collection name in mongo will be `events_bucket_hour`
 
 ```json
@@ -250,11 +250,18 @@ Collection name in mongo will be `events_bucket_day`
 
 So, in order to find the number of unique (per IP) events that occurred in a day, we have multiple ways to accomplish that.
 
-First, if we know exactly what we want we can just ask for it. We know we want the day represented by the timestamp `99964800` and the hash "click|somevalue" so retrieve it by id and look at the count.
+First, if we know exactly what we want we can just ask for it. We know we want the day represented by the timestamp `99964800` and the hash "click|somevalue" so retrieve it by the keys and look at the count.
 
 ```Graphql
 query EventGroupByKeys {
-  eventGroupByKeys(window: DAY, timestamp: 99964800, keys: []) {
+  eventGroupByKeys(
+    window: DAY,
+    timestamp: 99964800,
+    grouping: "eventType|campaignId",
+    keys: [
+      { key: "eventType", value: "click" },
+      { key: "campaignId", value: "someValue" }
+    ]) {
     count
   }
 }
@@ -269,7 +276,7 @@ query CountByGroup {
   countByGroup(
     applicationId: "appId"
     grouping: "eventType|campaignId|ipAddress"
-    nested_groups: "click|somevalue"
+    nested_groupings: "click|somevalue"
     timestamp: 99964800
     window: DAY
   ) {
@@ -281,17 +288,17 @@ query CountByGroup {
 
 The above query using `countByGroup` returns two data fields, `recordCount` and `aggregateCount`. `recordCount` is the total number of distinct records that were returned. In this example, that means how many records that match the "click|somevalue" grouping which would be 2 (there are two records in bucket 4). The `aggregateCount` looks inside each record and adds the `count` property. In this case that would be 3 (adding the count from Bucket 4). Unlike looking up the data by id, we can tell both the total count of clicks and the total number of distinct clicks per ip.
 
-`eventsByGroup` is similar, while less efficient, but is really only useful to get the total unless you plan to loop through all the events to add the aggregate count yourself. 
+`eventGroups` is similar, while less efficient, but is really only useful to get the total unless you plan to loop through all the events to add the aggregate count yourself.
 
 ```Graphql
 query EventsGroupedByIp {
-  eventsByGroup(
+  eventGroups(
     applicationId: "appId"
-    grouping: "eventType|campaignId|ipAddress"
+    window: DAY
     startTimestamp: 99964800
     endTimestamp: 100051200 # next day
-    window: DAY
-    nested_groups: "click|someValue"
+    grouping: "eventType|campaignId|ipAddress"
+    nested_grouping: "click|someValue"
   ) {
     totalCount
     items {
@@ -309,7 +316,6 @@ query EventsGroupedByIp {
 ```
 
 In the query above we get all of the events from bucket 4, but the totalCount would be `2` so we would know that there were two unique ips.
-
 
 ## Another use case
 

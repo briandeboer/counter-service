@@ -1,7 +1,9 @@
 use mongodb_base_service::ID;
+use mongodb_cursor_pagination::{Edge, FindResult, PageInfo};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-// use crate::models::Event;
+
+use crate::schema::Context;
 
 #[derive(juniper::GraphQLEnum, Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum WindowType {
@@ -37,7 +39,7 @@ pub struct Bucket {
     pub count: i32,
 }
 
-#[juniper::object(description = "All the votes for a user over a specific lifetime")]
+#[juniper::object(context = Context, description = "All the events grouped")]
 impl Bucket {
     pub fn hash(&self) -> &ID {
         &self.hash
@@ -65,5 +67,43 @@ impl Bucket {
 
     fn count(&self) -> i32 {
         self.count
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BucketConnection {
+    pub page_info: PageInfo,
+    pub edges: Vec<Edge>,
+    pub items: Vec<Bucket>,
+    pub total_count: i64,
+}
+
+#[juniper::object(Context = Context)]
+impl BucketConnection {
+    fn page_info(&self) -> &PageInfo {
+        &self.page_info
+    }
+
+    fn edges(&self) -> &Vec<Edge> {
+        &self.edges
+    }
+
+    fn items(&self) -> &Vec<Bucket> {
+        &self.items
+    }
+
+    fn total_count(&self) -> i32 {
+        self.total_count as i32
+    }
+}
+
+impl From<FindResult<Bucket>> for BucketConnection {
+    fn from(fr: FindResult<Bucket>) -> BucketConnection {
+        BucketConnection {
+            page_info: fr.page_info,
+            edges: fr.edges,
+            items: fr.items,
+            total_count: fr.total_count,
+        }
     }
 }
