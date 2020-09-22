@@ -14,6 +14,7 @@ pub struct Config {
     pub node: NodeDetails,
     pub windows: Vec<WindowType>,
     pub groups: Vec<String>,
+    pub log_all_events: Option<bool>,
 }
 
 impl Node for Config {
@@ -56,6 +57,10 @@ impl Config {
 
     fn groups(&self) -> &Vec<String> {
         &self.groups
+    }
+
+    fn log_all_events(&self) -> bool {
+        self.log_all_events.unwrap_or(false)
     }
 }
 
@@ -103,6 +108,7 @@ pub struct NewConfig {
     pub application_id: ID,
     pub windows: Vec<WindowType>,
     pub groups: Vec<String>,
+    pub log_all_events: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, juniper::GraphQLInputObject)]
@@ -114,4 +120,8 @@ pub struct UpdateConfig {
     /// Optional updated groups
     #[serde(skip_serializing_if = "Option::is_none")]
     pub groups: Option<Vec<String>>,
+
+    /// Optional updated log_all_events
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_all_events: Option<bool>,
 }

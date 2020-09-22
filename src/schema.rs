@@ -252,7 +252,7 @@ impl Mutation {
         application_id: ID,
         new_event: NewEvent,
         created_by_id: Option<ID>,
-    ) -> Result<Event, FieldError> {
+    ) -> Result<api::events::LogEventResult, FieldError> {
         api::events::log_event(
             ctx.clients.get_ref(),
             &application_id,

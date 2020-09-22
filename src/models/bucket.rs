@@ -35,7 +35,8 @@ pub struct Bucket {
     pub nested_groupings: Vec<String>,
     pub window: WindowType,
     pub timestamp: i32,
-    pub event_ids: Vec<ID>,
+    pub events: Option<Vec<EmbeddedEvent>>,
+    pub event_ids: Option<Vec<ID>>,
     pub count: i32,
 }
 
@@ -67,6 +68,25 @@ impl Bucket {
 
     fn count(&self) -> i32 {
         self.count
+    }
+
+    fn events(&self, limit: Option<i32>, skip: Option<i32>) -> Vec<EmbeddedEvent> {
+        match &self.events {
+            Some(events) => {
+                let len = events.len();
+                let skip = skip.unwrap_or(0) as usize;
+                if skip > len {
+                    return vec![];
+                }
+                let mut limit = limit.unwrap_or(10) as usize;
+                if skip + limit > len {
+                    limit = len - skip;
+                }
+                let truncated: Vec<EmbeddedEvent> = events[skip..(skip + limit)].into();
+                truncated
+            }
+            None => vec![],
+        }
     }
 }
 
@@ -106,4 +126,14 @@ impl From<FindResult<Bucket>> for BucketConnection {
             total_count: fr.total_count,
         }
     }
+}
+
+#[derive(Clone, Serialize, Deserialize, juniper::GraphQLObject)]
+pub struct EmbeddedEvent {
+    pub timestamp: i32,
+    pub raw_timestamp: i32,
+    #[serde(alias = "ipaddress")]
+    pub ip_address: Option<String>,
+    #[serde(alias = "eventtype")]
+    pub event_type: Option<String>,
 }

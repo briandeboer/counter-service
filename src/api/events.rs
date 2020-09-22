@@ -11,6 +11,7 @@ use std::sync::RwLock;
 use crate::api::lowercase_id;
 use crate::db::{mongo::add_collection_by_name, Clients};
 use crate::models::*;
+use crate::schema::now;
 
 lazy_static! {
     static ref CONFIGS: RwLock<HashMap<ID, Config>> = RwLock::new(HashMap::new());
@@ -247,7 +248,13 @@ pub fn query_event_groups(
     result.map_err(|e| e.into())
 }
 
-/// TODO: This should just return the event back, the storing of the event happens separately
+#[derive(Serialize, Deserialize, juniper::GraphQLObject)]
+pub struct LogEventResult {
+    success: bool,
+    inserted_id: Option<ID>,
+}
+
+/// TODO: This should just return back true, the storing of the event happens separately
 ///
 /// However, it will check to see if the application_id is valid or not and return an error
 pub fn log_event(
@@ -255,33 +262,44 @@ pub fn log_event(
     application_id: &ID,
     mut new_event: NewEvent,
     created_by_id: Option<ID>,
-) -> Result<Event, FieldError> {
+) -> Result<LogEventResult, FieldError> {
     if !is_valid_application(application_id) {
         return Err("Invalid application ID".into());
     }
 
     let application_id = lowercase_id(application_id);
-    let collection_name = get_collection_name(&application_id, None);
-    let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
-
     new_event.keys = new_event.keys.iter().map(|kp| kp.lowercase()).collect();
 
-    let inserted_id: ID = service.insert_one(new_event.clone(), created_by_id)?;
-    let maybe_item = service.find_one_by_id(inserted_id.clone())?;
-    let item = match maybe_item {
-        Some(item) => Ok(item),
-        None => Err("Unable to retrieve object after insert".into()),
-    };
-
-    // keep going and put this into the various places it needs to go
-    // loop through windows and groups
-    // TODO: better error handling
     let config = CONFIGS
         .read()
         .unwrap()
         .get(&application_id)
         .unwrap()
         .clone();
+
+    // if we are logging all events then we'll have an inserted_id
+    let log_all_events = config.log_all_events.unwrap_or(false);
+    let inserted_id = if log_all_events {
+        let collection_name = get_collection_name(&application_id, None);
+        let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
+        let inserted_id: ID = service.insert_one(new_event.clone(), created_by_id)?;
+        Some(inserted_id)
+    } else {
+        None
+    };
+
+    // create the embedded doc
+    let mut embedded_doc = doc! {
+        "timestamp": &new_event.timestamp,
+        "raw_timestamp": now(),
+    };
+    new_event.keys.iter().for_each(|kp| {
+        embedded_doc.insert(kp.key.clone(), kp.value.clone());
+    });
+
+    // keep going and put this into the various places it needs to go
+    // loop through windows and groups
+    // TODO: better error handling
     config.windows.iter().for_each(|window| {
         let collection_name = get_collection_name(&application_id, Some(&window));
         let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
@@ -292,7 +310,7 @@ pub fn log_event(
             let timestamp = get_timestamp_start(window, new_event.timestamp);
             let hash = get_hash_id(window, group, &new_event.keys, timestamp);
             let id = ID::from_string(hash.clone());
-            let update_doc = doc! {
+            let mut update_doc = doc! {
                 "$set": {
                     "application_id": application_id.to_bson(),
                     "grouping": group.clone(),
@@ -301,8 +319,11 @@ pub fn log_event(
                     "nested_groupings": get_nested_groupings(&group, &config.groups),
                 },
                 "$inc": { "count": 1 },
-                "$push": { "event_ids": inserted_id.to_bson() },
+                "$push": { "events": embedded_doc.clone() },
             };
+            if let Some(inserted_id) = inserted_id.clone() {
+                update_doc.insert("$push", doc! { "event_ids": inserted_id.to_bson() });
+            }
             let _result = service.data_source().update_one(
                 doc! {
                     "_id": id.to_bson()
@@ -315,8 +336,10 @@ pub fn log_event(
             );
         });
     });
-
-    item
+    Ok(LogEventResult {
+        success: true,
+        inserted_id,
+    })
 }
 
 /// looks in the all_groups and checks if the group starts with that (and is not the same)

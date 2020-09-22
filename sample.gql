@@ -49,8 +49,8 @@ query CountEventsByGroup {
 
 query EventGroups {
   eventGroups(
-    applicationId:"appId"
-    window:DAY
+    applicationId:"app2"
+    window:HOUR
     startTimestamp:99997200
     endTimestamp:100051200
   ) {
@@ -58,6 +58,11 @@ query EventGroups {
     items {
       hash
       count
+      events(limit: 2, skip: 1) {
+        rawTimestamp
+        timestamp
+        ipAddress
+      }
     }
   }
 }
@@ -68,14 +73,14 @@ mutation LogEvent {
     newEvent: {
       keys: [
         { key: "eventType", value: "click" },
-        { key: "ipAddress", value: "3.2.3.4" },
+        { key: "ipAddress", value: "1.2.3.4" },
         { key: "userAgent", value: "Some Very Long User Agent" },
         { key: "campaignId", value: "someOtherValue" }
       ],
       timestamp: 100000000
     }) {
-    id
-    timestamp
+    success
+    insertedId
   }
 }
 
