@@ -133,7 +133,7 @@ pub fn bucket_by_keys(
     application_id: &ID,
     window: &WindowType,
     timestamp: i32,
-    group: &str,
+    group_def: &str,
     keypairs: &Vec<NewKeyPair>,
 ) -> Result<Bucket, FieldError> {
     if !is_valid_application(application_id) {
@@ -143,7 +143,7 @@ pub fn bucket_by_keys(
     let collection_name = get_collection_name(application_id, Some(window));
     let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
     let start_timestamp = get_timestamp_start(window, timestamp);
-    let hash = get_hash_id(window, group, keypairs, start_timestamp);
+    let hash = get_hash_id(window, group_def, keypairs, start_timestamp);
 
     println!("hash: {:?}", ID::from(hash.clone()));
     let result: Option<Bucket> = service.find_one_by_id(ID::from(hash))?;

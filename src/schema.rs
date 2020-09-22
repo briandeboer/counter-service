@@ -114,7 +114,7 @@ impl Query {
         application_id: ID,
         window: WindowType,
         timestamp: i32,
-        group: String,
+        grouping: String,
         keys: Vec<NewKeyPair>,
     ) -> Result<Bucket, FieldError> {
         api::events::bucket_by_keys(
@@ -122,7 +122,7 @@ impl Query {
             &application_id,
             &window,
             timestamp,
-            &group,
+            &grouping,
             &keys,
         )
     }
