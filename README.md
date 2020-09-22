@@ -16,7 +16,7 @@ type Config {
     "eventType|campaignId",
     "eventType|campaignId|ipAddress",
   ]
-  logAllEvents: false // default is false
+  logAllEvents: false # default is false
 }
 ```
 
