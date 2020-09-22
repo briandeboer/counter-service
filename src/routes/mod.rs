@@ -1,3 +1,4 @@
+mod events;
 mod graphql;
 mod health;
 
@@ -12,6 +13,7 @@ pub fn app_routes(config: &mut web::ServiceConfig) {
     config
         .service(
             web::scope(&format!("{}/", base_path))
+                .route("logevents/{app_id}", web::post().to(events::log_events))
                 .route("ping", web::get().to(pong))
                 .route("~/ready", web::get().to(readiness))
                 .route("health", web::get().to(get_health))

@@ -732,6 +732,7 @@ dependencies = [
  "mongodb-base-service",
  "mongodb-cursor-pagination",
  "num_cpus",
+ "percent-encoding",
  "serde",
  "serde_json",
  "uuid 0.8.1",

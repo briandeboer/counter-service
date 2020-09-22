@@ -67,7 +67,7 @@ fn get_hash_id(
         })
 }
 
-fn is_valid_application(application_id: &ID) -> bool {
+pub fn is_valid_application(application_id: &ID) -> bool {
     match CONFIGS.read().unwrap().get(&lowercase_id(application_id)) {
         Some(_config) => true,
         None => false,
@@ -250,8 +250,8 @@ pub fn query_event_groups(
 
 #[derive(Serialize, Deserialize, juniper::GraphQLObject)]
 pub struct LogEventResult {
-    success: bool,
-    inserted_id: Option<ID>,
+    pub success: bool,
+    pub inserted_id: Option<ID>,
 }
 
 /// TODO: This should just return back true, the storing of the event happens separately
