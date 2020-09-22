@@ -116,7 +116,6 @@ pub fn all_events(
     }
 
     let collection_name = get_collection_name(application_id, None);
-    println!("collection_name: {}", collection_name);
     let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
     let result: Result<FindResult<Event>, ServiceError> =
         service.find(None, None, limit, after, before, skip);
@@ -126,6 +125,31 @@ pub fn all_events(
             Ok(connection)
         }
         Err(e) => Err(FieldError::from(e)),
+    }
+}
+
+pub fn bucket_by_keys(
+    ctx: &Clients,
+    application_id: &ID,
+    window: &WindowType,
+    timestamp: i32,
+    group: &str,
+    keypairs: &Vec<NewKeyPair>,
+) -> Result<Bucket, FieldError> {
+    if !is_valid_application(application_id) {
+        return Err("Invalid application ID".into());
+    }
+
+    let collection_name = get_collection_name(application_id, Some(window));
+    let service = &ctx.mongo.get_mongo_service(&collection_name).unwrap();
+    let start_timestamp = get_timestamp_start(window, timestamp);
+    let hash = get_hash_id(window, group, keypairs, start_timestamp);
+
+    println!("hash: {:?}", ID::from(hash.clone()));
+    let result: Option<Bucket> = service.find_one_by_id(ID::from(hash))?;
+    match result {
+        Some(bucket) => Ok(bucket),
+        None => Err("Unable to find event group".into()),
     }
 }
 

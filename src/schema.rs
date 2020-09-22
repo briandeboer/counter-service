@@ -108,6 +108,24 @@ impl Query {
             skip,
         )
     }
+
+    fn event_group_by_keys(
+        ctx: &Context,
+        application_id: ID,
+        window: WindowType,
+        timestamp: i32,
+        group: String,
+        keys: Vec<NewKeyPair>,
+    ) -> Result<Bucket, FieldError> {
+        api::events::bucket_by_keys(
+            ctx.clients.get_ref(),
+            &application_id,
+            &window,
+            timestamp,
+            &group,
+            &keys,
+        )
+    }
 }
 
 pub struct Mutation;

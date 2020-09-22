@@ -34,6 +34,7 @@ pub struct Bucket {
     pub window: WindowType,
     pub timestamp: i32,
     pub event_ids: Vec<ID>,
+    pub count: i32,
 }
 
 #[juniper::object(description = "All the votes for a user over a specific lifetime")]
@@ -60,5 +61,9 @@ impl Bucket {
 
     fn timestamp(&self) -> i32 {
         self.timestamp
+    }
+
+    fn count(&self) -> i32 {
+        self.count
     }
 }

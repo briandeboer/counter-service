@@ -12,15 +12,31 @@ query AllEvents {
   }
 }
 
+query EventGroupByKeys {
+  eventGroupByKeys(
+    applicationId:"appId"
+    window:DAY
+    timestamp:99964800
+    group:"eventType|campaignId"
+    keys: [
+      { key:"eventType", value:"click"},
+      { key:"campaignId", value:"someValue"},
+    ]
+  ) {
+    hash
+    applicationId
+  }
+}
+
 mutation LogEvent {
   logEvent(
-    applicationId: "appId"
+    applicationId: "app2"
     newEvent: {
       keys: [
         { key: "eventType", value: "click" },
-        { key: "ipAddress", value: "1.2.3.4" },
+        { key: "ipAddress", value: "3.2.3.4" },
         { key: "userAgent", value: "Some Very Long User Agent" },
-        { key: "campaignId", value: "someValue" }
+        { key: "campaignId", value: "someOtherValue" }
       ],
       timestamp: 100000000
     }) {
@@ -49,11 +65,11 @@ query ConfigById {
 
 mutation CreateConfig {
   createConfig(newConfig: {
-    applicationId: "appId"
+    applicationId: "app2"
     windows: [DAY, HOUR]
     groups:[
-      "eventType|campaignId",
-    	"eventType|campaignId|ipAddress",
+      "eventType",
+    	"eventType|campaignId",
     ]
   }) {
     applicationId
@@ -62,13 +78,13 @@ mutation CreateConfig {
 
 mutation UpdateConfig {
   updateConfig(
-    applicationId: "appId",
+    applicationId: "app2",
     updateConfig: {
-      windows: [HOUR, DAY]
+      windows: [HOUR, ALL_TIME]
       groups: [
-        "eventType|campaignId",
-    	  "eventType|campaignId|ipAddress",
-      ]  
+        "eventType",
+    	  "eventType|campaignId",
+      ]
   }) {
     applicationId
     windows

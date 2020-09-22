@@ -253,8 +253,8 @@ So, in order to find the number of unique (per IP) events that occurred in a day
 First, if we know exactly what we want we can just ask for it. We know we want the day represented by the timestamp `99964800` and the hash "click|somevalue" so retrieve it by id and look at the count.
 
 ```Graphql
-query EventByHash {
-  eventById(id: "appid|click|somevalue|99964800") {
+query EventGroupByKeys {
+  eventGroupByKeys(window: DAY, timestamp: 99964800, keys: []) {
     count
   }
 }
