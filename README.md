@@ -16,8 +16,11 @@ type Config {
     "eventType|campaignId",
     "eventType|campaignId|ipAddress",
   ]
+  logAllEvents: false // default is false
 }
 ```
+
+If logAllEvents is then all the raw events will be logged into an `<application_id>_all` group. Otherwise they are only embedded.
 
 ### Important
 
@@ -113,7 +116,7 @@ Collection name in mongo will be `events_bucket_hour`
   nested_groups: [], //  nothing in groups yet because there are no subsets
   count: 1, // the total number of objects
   events: [
-    ObjectId(<id of LogEventA>) // id of inserted object into all records
+    { timestamp: 99997200, ipaddress: "1.2.3.4", ... }
   ]
 },
 
@@ -127,8 +130,8 @@ Collection name in mongo will be `events_bucket_hour`
   nested_groups: [], //  nothing in groups yet because there are no subsets
   count: 2, // the total number of objects
   events: [
-    ObjectId(<id of LogEventB>) // id of inserted object into all records
-    ObjectId(<id of LogEventC>) // id of inserted object into all records
+    { LogEventB ... },
+    { LogEventC ... }
   ]
 }
 ```
@@ -149,9 +152,9 @@ Collection name in mongo will be `events_bucket_day`
   nested_groups: [], //  nothing in groups yet because there are no subsets
   count: 3, // the total number of objects
   events: [
-    ObjectId(<id of LogEventA>),
-    ObjectId(<id of LogEventB>),
-    ObjectId(<id of LogEventC>)
+    { LogEventA ... },
+    { LogEventB ... },
+    { LogEventC ... }
   ]
 }
 ```
@@ -175,7 +178,7 @@ Collection name in mongo will be `events_bucket_hour`
   nested_groups: ["click|somevalue"],
   count: 1, // the total number of objects
   events: [
-    ObjectId(<id of LogEventA>) // id of inserted object into all records
+    { LogEventA ... },
   ]
 },
 
@@ -189,7 +192,7 @@ Collection name in mongo will be `events_bucket_hour`
   nested_groups: ["click|somevalue"],
   count: 1, // the total number of objects
   events: [
-    ObjectId(<id of LogEventB>) // id of inserted object into all records
+    { LogEventB ... },
   ]
 }
 
@@ -203,7 +206,7 @@ Collection name in mongo will be `events_bucket_hour`
   nested_groups: ["click|somevalue"],
   count: 1, // the total number of objects
   events: [
-    ObjectId(<id of LogEventC>) // id of inserted object into all records
+    { LogEventC ... },
   ]
 }
 
@@ -227,8 +230,8 @@ Collection name in mongo will be `events_bucket_day`
   nested_groups: ["click|somevalue"],
   count: 2, // the total number of objects
   events: [
-    ObjectId(<id of LogEventA>),
-    ObjectId(<id of LogEventB>),
+    { LogEventA ... },
+    { LogEventB ... },
   ]
 },
 // LogEventC
@@ -241,7 +244,7 @@ Collection name in mongo will be `events_bucket_day`
   nested_groups: ["click|somevalue"],
   count: 1, // the total number of objects
   events: [
-    ObjectId(<id of LogEventC>),
+    { LogEventC ... },
   ]
 }
 ```
@@ -346,11 +349,11 @@ With the above, votes would get grouped together in three ways. Here are example
   nested_groups: [],
   count: 3, // the total number of votes for question1 (not limited by user)
   events: [
-    ObjectId(<id of vote for question1/answer1/user1>),
-    ObjectId(<id of vote for question1/answer2/user2>),
-    ObjectId(<id of vote for question1/answer3/user2>),
-    ObjectId(<id of vote for question1/answer1/user2>),
-    ObjectId(<id of vote for question1/answer1/user1>),
+    { vote for question1/answer1/user1 },
+    { vote for question1/answer2/user2 },
+    { vote for question1/answer3/user2 },
+    { vote for question1/answer1/user2 },
+    { vote for question1/answer1/user1 },
   ]
 },
 {
@@ -362,9 +365,9 @@ With the above, votes would get grouped together in three ways. Here are example
   nested_groups: ["question1"],
   count: 3, // the total number of votes for question1 and answer1
   events: [
-    ObjectId(<id of vote for question1/answer1/user1>),
-    ObjectId(<id of vote for question1/answer1/user2>),
-    ObjectId(<id of vote for question1/answer1/user1>),
+    { vote for question1/answer1/user1 },
+    { vote for question1/answer1/user2 },
+    { vote for question1/answer1/user1 },
   ]
 },
 {
@@ -376,8 +379,8 @@ With the above, votes would get grouped together in three ways. Here are example
   nested_groups: ["question1"],
   count: 2, // the total number of votes for question1 and answer1 for user 1
   events: [
-    ObjectId(<id of vote for question1/answer1/user1>),
-    ObjectId(<id of vote for question1/answer1/user1>),
+    { vote for question1/answer1/user1 },
+    { vote for question1/answer1/user1 },
   ]
 },
 {
@@ -389,7 +392,7 @@ With the above, votes would get grouped together in three ways. Here are example
   nested_groups: ["question1"],
   count:1, // the total number of votes for question1 and answer1 for user 2
   events: [
-    ObjectId(<id of vote for question1/answer1/user2>),
+    { vote for question1/answer1/user2 },
   ]
 },
 ...
