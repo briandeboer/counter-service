@@ -11,7 +11,7 @@ The counter service will look for any configurations objects which define how th
 ```Graphql
 type Config {
   applicationId: ID
-  buckets: [HOUR, DAY] // possible values are HOUR, DAY, WEEK, MONTH, ALL_TIME
+  buckets: [HOUR, DAY] # possible values are HOUR, DAY, WEEK, MONTH, ALL_TIME
   groups: [
     "eventType|campaignId",
     "eventType|campaignId|ipAddress",
@@ -104,7 +104,7 @@ An event will be logged into the all_events bucket, and based on the above examp
 Grouped by eventType, campaignId, and hour.
 Collection name in mongo will be `events_bucket_hour`
 
-```json
+```js
 // two records because two different hours
 // LogEventA
 {
@@ -141,7 +141,7 @@ Collection name in mongo will be `events_bucket_hour`
 Grouped by eventType, campaignId, and day
 Collection name in mongo will be `events_bucket_day`
 
-```json
+```js
 // All three events
 {
   hash: "appid|click|somevalue|99964800", // timestamp of 00:00 UTC
@@ -166,7 +166,7 @@ Because the application config has another group `["eventType", "campaignId", "i
 Grouped by eventType, campaignId, ipAddress and hour
 Collection name in mongo will be `events_bucket_hour`
 
-```json
+```js
 // three records because two different hours and two different ips
 // LogEventA
 {
@@ -219,7 +219,7 @@ Note: Notice how LogEventB and LogEventC have a shared group. That will allow yo
 Grouped by eventType, campaignId, ip address, and day
 Collection name in mongo will be `events_bucket_day`
 
-```json
+```js
 // Two records because LogEventA & LogEventB get grouped together
 {
   hash: "Day|click|somevalue|1.2.3.4|99964800", // timestamp of 00:00 UTC
@@ -324,7 +324,7 @@ In the query above we get all of the events from bucket 4, but the totalCount wo
 
 Let's take another use case... Assume we want to count the number of votes on a certain question and that users are restricted from voting more than once. We could use a config like so:
 
-```json
+```js
 {
   applicationId: 'voteapp',
   buckets: [ALL], // we don't actually care when they vote, so don't limit by time
@@ -339,7 +339,7 @@ Let's take another use case... Assume we want to count the number of votes on a 
 
 With the above, votes would get grouped together in three ways. Here are examples of the data that would be inserted into the `events_bucket_all` collection:
 
-```json
+```js
 {
   hash: "voteapp|question1|-1", // timestamp is -1 because it's all time
   applicationId, "appId",
@@ -400,7 +400,7 @@ With the above, votes would get grouped together in three ways. Here are example
 
 If you wanted to limit the number of votes that each user can make to only 1 you could add the following grouping to the config:
 
-```json
+```js
  ["questionId", "userId"] // if you want to limit to one per user
  ```
 
