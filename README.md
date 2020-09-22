@@ -20,7 +20,7 @@ type Config {
 }
 ```
 
-If logAllEvents is then all the raw events will be logged into an `<application_id>_all` group. Otherwise they are only embedded.
+If logAllEvents is `true` then all the raw events will be logged into an `<application_id>_all` group. Otherwise they are only embedded.
 
 ### Important
 
