@@ -275,11 +275,11 @@ The returned count will be exactly the number of events that match. This is obvi
 Another option is that we can request the information by the grouping. (Note there are two different options here, `countByGroup` and `eventsByGroup`). `countByGroup` will solely count the items which is more efficient. `eventsByGroup` will return the actual data, but will require paginating to count up all of the inner items.
 
 ```Graphql
-query CountByGroup {
-  countByGroup(
+query CountEventsByGroup {
+  countEventsByGroup(
     applicationId: "appId"
     grouping: "eventType|campaignId|ipAddress"
-    nested_groupings: "click|somevalue"
+    nestedGrouping: "click|somevalue"
     timestamp: 99964800
     window: DAY
   ) {
@@ -289,7 +289,7 @@ query CountByGroup {
 }
 ```
 
-The above query using `countByGroup` returns two data fields, `recordCount` and `aggregateCount`. `recordCount` is the total number of distinct records that were returned. In this example, that means how many records that match the "click|somevalue" grouping which would be 2 (there are two records in bucket 4). The `aggregateCount` looks inside each record and adds the `count` property. In this case that would be 3 (adding the count from Bucket 4). Unlike looking up the data by id, we can tell both the total count of clicks and the total number of distinct clicks per ip.
+The above query using `countEventsByGroup` returns two data fields, `recordCount` and `aggregateCount`. `recordCount` is the total number of distinct records that were returned. In this example, that means how many records that match the "click|somevalue" grouping which would be 2 (there are two records in bucket 4). The `aggregateCount` looks inside each record and adds the `count` property. In this case that would be 3 (adding the count from Bucket 4). Unlike looking up the data by id, we can tell both the total count of clicks and the total number of distinct clicks per ip.
 
 `eventGroups` is similar, while less efficient, but is really only useful to get the total unless you plan to loop through all the events to add the aggregate count yourself.
 
@@ -301,7 +301,7 @@ query EventsGroupedByIp {
     startTimestamp: 99964800
     endTimestamp: 100051200 # next day
     grouping: "eventType|campaignId|ipAddress"
-    nested_grouping: "click|someValue"
+    nestedGrouping: "click|someValue"
   ) {
     totalCount
     items {
@@ -405,6 +405,12 @@ If you wanted to limit the number of votes that each user can make to only 1 you
  ```
 
 Then you could make a request by id for "questionid|userid" and if anything comes back you know that this user has already voted for this question. Then you can restrict it.
+
+## REST endpoint for logging
+
+### POST `/{base_path}/logevents/{application_id}`
+
+You can send multiple log events at a time by posting an array of `NewEvent` objects to the endpoint.
 
 ## Getting Started
 

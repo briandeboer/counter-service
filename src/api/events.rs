@@ -1,4 +1,4 @@
-use bson::{doc, Bson};
+use bson::doc;
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike, Weekday};
 use juniper::FieldError;
 use mongodb::options::UpdateOptions;
@@ -52,19 +52,30 @@ fn get_hash_id(
     keypairs: &Vec<impl KeyPairing>,
     timestamp: i32,
 ) -> String {
-    group_def
-        .split('|')
-        .fold(format!("{}|{}", window, timestamp), |mut acc, key| {
-            let maybe_keypair = keypairs
-                .iter()
-                .find(|k| k.key() == key.to_ascii_lowercase());
-            let value = match maybe_keypair {
-                Some(kp) => kp.value(),
-                None => "null".to_string(),
-            };
+    format!(
+        "{}|{}|{}",
+        window,
+        timestamp,
+        get_group_id(group_def, keypairs)
+    )
+}
+
+fn get_group_id(group_def: &str, keypairs: &Vec<impl KeyPairing>) -> String {
+    group_def.split('|').fold("".to_string(), |mut acc, key| {
+        let maybe_keypair = keypairs
+            .iter()
+            .find(|k| k.key() == key.to_ascii_lowercase());
+        let value = match maybe_keypair {
+            Some(kp) => kp.value(),
+            None => "null".to_string(),
+        };
+        if acc == "" {
+            acc = value.clone();
+        } else {
             acc = format!("{}|{}", acc, value);
-            acc
-        })
+        }
+        acc
+    })
 }
 
 pub fn is_valid_application(application_id: &ID) -> bool {
@@ -156,6 +167,15 @@ pub fn bucket_by_keys(
 
 #[derive(Clone, Debug, Serialize, Deserialize, juniper::GraphQLObject)]
 pub struct CountResponse {
+    total_record_count: i32,
+    total_aggregate_count: i32,
+    counts: Vec<Count>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, juniper::GraphQLObject)]
+struct Count {
+    #[serde(rename = "_id")]
+    timestamp: i32,
     aggregate_count: i32,
     record_count: i32,
 }
@@ -183,30 +203,37 @@ pub fn count_events_by_group(
     let match_doc = doc! {
         "$match": {
             "grouping": grouping,
-            "nested_groupings": { "$in": nested_grouping },
+            "nested_grouping_ids": { "$in": nested_grouping },
             "timestamp": { "$gte": start_timestamp, "$lte": end_timestamp },
         },
     };
     let group_doc = doc! {
         "$group": {
-            "_id": Bson::Null,
+            "_id": "$timestamp",
             "record_count": { "$sum": 1 },
             "aggregate_count": { "$sum": "$count" },
         }
     };
-    let mut result = service
+    let result = service
         .data_source()
         .aggregate(vec![match_doc.clone(), group_doc.clone()], None)?;
 
-    if let Some(first) = result.next() {
-        if let Ok(doc) = first {
-            let count_response: CountResponse =
-                bson::from_bson(bson::Bson::Document(doc.clone())).unwrap();
-            return Ok(count_response);
-        }
-    }
+    let mut count_response = CountResponse {
+        total_aggregate_count: 0,
+        total_record_count: 0,
+        counts: vec![],
+    };
 
-    Err("Unable to process aggregation".into())
+    result.for_each(|r| {
+        if let Ok(doc) = r {
+            let response: Count = bson::from_bson(bson::Bson::Document(doc.clone())).unwrap();
+            count_response.total_aggregate_count += response.aggregate_count;
+            count_response.total_record_count += response.record_count;
+            count_response.counts.push(response);
+        }
+    });
+
+    Ok(count_response)
 }
 
 pub fn query_event_groups(
@@ -238,7 +265,7 @@ pub fn query_event_groups(
 
     if let Some(nested_grouping) = nested_grouping {
         filter.insert(
-            "nested_groupings",
+            "nested_grouping_ids",
             vec![nested_grouping.to_ascii_lowercase()],
         );
     }
@@ -310,19 +337,38 @@ pub fn log_event(
             let timestamp = get_timestamp_start(window, new_event.timestamp);
             let hash = get_hash_id(window, group, &new_event.keys, timestamp);
             let id = ID::from_string(hash.clone());
+            let nested_groupings = get_nested_groupings(&group, &config.groups);
+            let nested_grouping_ids: Vec<String> = nested_groupings
+                .iter()
+                .map(|group_def| get_group_id(group_def, &new_event.keys))
+                .collect();
             let mut update_doc = doc! {
                 "$set": {
                     "application_id": application_id.to_bson(),
                     "grouping": group.clone(),
+                    "grouping_id": get_group_id(&group, &new_event.keys),
                     "window": format!("{:?}", window),
                     "timestamp": timestamp,
-                    "nested_groupings": get_nested_groupings(&group, &config.groups),
+                    "nested_grouping_ids": nested_grouping_ids,
                 },
                 "$inc": { "count": 1 },
                 "$push": { "events": embedded_doc.clone() },
             };
             if let Some(inserted_id) = inserted_id.clone() {
-                update_doc.insert("$push", doc! { "event_ids": inserted_id.to_bson() });
+                update_doc.insert(
+                    "$push",
+                    doc! {
+                        "event_ids": inserted_id.to_bson(),
+                        "events": embedded_doc.clone()
+                    },
+                );
+            } else {
+                update_doc.insert(
+                    "$push",
+                    doc! {
+                        "events": embedded_doc.clone()
+                    },
+                );
             }
             let _result = service.data_source().update_one(
                 doc! {
